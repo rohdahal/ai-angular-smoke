@@ -1,59 +1,126 @@
-# AiAngularSmoke
+# AI‑Driven Angular Test Generator (CI‑First)
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 20.3.3.
+This repository demonstrates an automated, **CI‑driven approach to enforcing unit‑test coverage** in Angular projects using a local, open‑source LLM.
 
-## Development server
+Instead of blocking developers with failing coverage gates and manual test writing, the pipeline **detects under‑covered files, generates missing tests automatically, validates them, and iterates until coverage thresholds are met**.
 
-To start a local development server, run:
+No cloud APIs. No SaaS lock‑in. Fully local and reproducible.
+
+---
+
+## What This Project Does
+
+- Enforces **per‑file line and branch coverage thresholds** (default ≥ 90%)
+- Detects missing or under‑covered `.spec.ts` files
+- Generates Angular unit tests using an **open‑source coding LLM**
+- Validates generated tests by compiling and running `ng test`
+- Iterates safely until coverage requirements are satisfied
+- Designed to run **locally** or inside a **GitHub Actions workflow**
+
+---
+
+## Why This Exists
+
+Many teams want:
+- Fast shipping
+- Strong test guarantees
+- CI pipelines that guide instead of block
+
+This project explores a middle ground:
+
+> Let CI write the tests *only when needed*, and only for files that actually fail coverage.
+
+---
+
+## Key Design Principles
+
+- **Per‑file coverage enforcement** (not global cheating)
+- **Standalone‑component safe** (Angular 15+)
+- **Strict TypeScript compatible**
+- **No hard‑coded app types** (future‑proof)
+- **Local inference** using Ollama
+- **Deterministic CI behavior**
+
+---
+
+## How It Works
+
+1. Run Angular tests with coverage enabled
+2. Parse `coverage/**/lcov.info`
+3. Identify under‑covered source files
+4. For each file:
+   - Generate or update the corresponding `.spec.ts`
+   - Auto‑correct common Angular test pitfalls
+   - Compile and run tests
+5. Repeat until coverage threshold is met or max iterations are reached
+
+---
+
+## Requirements
+
+### Runtime
+- Node.js 18+
+- Python 3.9+
+- Angular CLI (via `npx`)
+- Ollama
+
+### Model
+Tested with:
+- `qwen2.5-coder:7b-instruct`
 
 ```bash
-ng serve
+ollama pull qwen2.5-coder:7b-instruct
 ```
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+---
 
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+## Local Usage
 
 ```bash
-ng generate component component-name
+npm ci
+ollama serve
+python tools/ai_testgen.py --min 90 --max-iters 10
 ```
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+Flags:
+- `--min` Minimum required per‑file coverage
+- `--max-iters` Maximum number of files to fix per run
+- `--model` Ollama model tag
 
-```bash
-ng generate --help
+---
+
+## CI Usage (GitHub Actions)
+
+Typical workflow steps:
+
+```yaml
+- npm ci
+- ollama pull qwen2.5-coder:7b-instruct
+- python tools/ai_testgen.py --min 90
 ```
 
-## Building
+The script exits non‑zero if coverage requirements are not met.
 
-To build the project run:
+---
 
-```bash
-ng build
-```
+## What This Is Not
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+- Not a replacement for thoughtful test design
+- Not a global coverage cheater
+- Not a cloud‑hosted AI service
+- Not Angular‑specific in concept
 
-## Running unit tests
+---
 
-To execute unit tests with the [Karma](https://karma-runner.github.io) test runner, use the following command:
+## Project Status
 
-```bash
-ng test
-```
+This is an **engineering proof‑of‑concept** exploring:
+- AI‑assisted CI workflows
+- Coverage enforcement without developer friction
+- Local LLMs in real build pipelines
 
-## Running end-to-end tests
+---
 
-For end-to-end (e2e) testing, run:
+## License
 
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+The Unlicense: This software is released into the public domain and may be used, modified, and distributed for any purpose, with or without attribution.
