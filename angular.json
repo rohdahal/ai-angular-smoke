@@ -89,7 +89,11 @@
             ],
             "styles": [
               "src/styles.scss"
-            ]
+            ],
+            "browsers": "ChromeHeadless",
+            "watch": false,
+            "codeCoverage": true,
+            "karmaConfig": "karma.conf.js"
           }
         }
       }

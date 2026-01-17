@@ -1,4 +1,4 @@
-name: smoke-pr
+name: ai-testgen
 
 on:
   workflow_dispatch:
@@ -8,28 +8,63 @@ permissions:
   pull-requests: write
 
 jobs:
-  create-pr:
+  ai-testgen:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Create a test file in repo root
-        run: |
-          ts="$(date -u +'%Y%m%d-%H%M%S')"
-          fname="ai-smoke-${ts}.md"
-          {
-            echo "# AI Smoke Test"
-            echo
-            echo "Created by GitHub Actions at ${ts} UTC."
-          } > "${fname}"
-          ls -la "${fname}"
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
 
-      - name: Create Pull Request
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Ensure missing .spec.ts files exist
+        run: node tools/ensure-specs-for-ts.mjs
+
+      - name: Install Ollama
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+          ollama --version
+
+      - name: Start Ollama
+        run: |
+          nohup ollama serve > ollama.log 2>&1 &
+          sleep 2
+
+      - name: Pull model
+        run: |
+          ollama pull qwen2.5-coder:7b-instruct
+
+      - name: Generate tests until all files meet coverage
+        env:
+          AI_MIN_COVERAGE: "90"
+          AI_MAX_ITERS: "10"
+          AI_MODEL: "qwen2.5-coder:7b-instruct"
+        run: |
+          python tools/ai_testgen.py \
+            --min ${AI_MIN_COVERAGE} \
+            --max-iters ${AI_MAX_ITERS} \
+            --model ${AI_MODEL}
+
+      - name: Final validation
+        run: npx ng test --watch=false --code-coverage
+
+      - name: Create Pull Request if changes
         uses: peter-evans/create-pull-request@v6
         with:
-          commit-message: "chore: add smoke test file"
-          title: "chore: smoke test PR"
-          body: "This PR is created by a workflow run to verify Actions can write files and open PRs."
-          branch: "ci/smoke-pr"
+          commit-message: "test: generate/update specs to meet coverage"
+          title: "test: generate/update specs to meet coverage"
+          body: "CI generated/updated unit tests for files below the coverage threshold."
+          branch: "ci/ai-testgen"
           delete-branch: true
